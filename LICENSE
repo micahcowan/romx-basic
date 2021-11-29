@@ -1,0 +1,6 @@
+All my code (Micah Cowan) is licensed under the MIT License.
+
+Portions of src/basic-loader.s were lifted from
+"ROMifying a Program for Uploading to ROMX", copyright Jeff Mazur.
+(part of "ROMify Image Tutorial.zip" at
+https://theromexchange.com/documentation/romxce)

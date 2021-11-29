@@ -1,0 +1,5 @@
+*.bin
+*.list
+*.o
+ROMX-BASIC.DSK
+src/launch-error-msg.inc
