@@ -2,15 +2,27 @@
 
         KYBD = $C000
         KYBD_STROBE = $C010
-
-;.macro inc16 addr
-;.scope
-;        inc addr
-;        bne skip
-;        inc addr+1
-;    skip:
-;.endscope
-;.endmacro
+        RAM_LOC = $3600
+        RMXStrt = $DFD9 ; per API docs, but ex. code has DFD8?
+        RMXInit = $1012
+        RMXDoMenu = $103C
+        ASOFTStart = $D000
+        ASOFT_RAMStart = $800
+        RealBank = $2A6
+        BANK0 = $CFE0
+        SavedFirstTwo = $36FA
+        SavedProgStart = $36FC
+        SavedProgEnd = $36FE
+        KSWL = $38
+        KSWH = $39
+        ASOFT_COLDSTART = $f128
+        KEYIN = $fd1b
+        PRGEND = $AF
+        TEXTTAB = $67
+        Mon_SETKBD = $FE89
+        Mon_SETVID = $FE93
+        Mon_INIT = $FB2F
+        Mon_SETNORM = $FE84
 
 .macro inc16 addr
         inc addr
@@ -35,7 +47,14 @@
         incThenRead src, {dest+1}
 .endmacro
 
-        .org $8000
+.macro SelBank0
+        bit $C0E0    ;ZipSlow
+        bit $CACA
+        bit $CACA
+        bit $CAFE
+.endmacro
+
+        .org $FE00
 
 Launch:
         cld
@@ -71,7 +90,122 @@ AwaitKeypress:
         bpl AwaitKeypress
         lda KYBD_STROBE
         ; TODO: copy jump-to-bank0-menu routine to RAM, then execute it
-        rts
+        jsr RamCpy
+        jmp Bk2Menu - (Launch - RAM_LOC)
 
 LaunchErrorMsg:
 .include "launch-error-msg.inc"
+
+RamCpy:
+        ldy #0
+@lp:    lda Launch, y
+        sta RAM_LOC, y
+        iny
+        bne @lp
+        rts
+Bk2Menu:
+        SelBank0
+        jsr RMXStrt
+        jsr RMXInit
+        jmp RMXDoMenu
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ASOFTLoad:
+        cld
+        ; First, copy our bootloader into RAM
+        ; jsr RamCpy - not needed, copied below
+
+ASOFTCopy:
+        ; Then, load the stored BASIC program into RAM
+        ldx #>ASOFTStart
+        lda #>ASOFT_RAMStart
+        ldy #0
+        stx $3
+        sta $1
+        sty $2
+        sty $0
+CpOnePg:        lda ($2), y     ; copy one page
+                sta ($0), y
+                iny
+            bne CpOnePg
+            inc $1              ; then move onto next page
+            inc $3
+        bne CpOnePg             ; ...until we've reached this page
+
+        ; Then switch the ROM bank to the final one (containing AppleSoft
+        ;   and Monitor). (We won't check for language card ROM
+        ;   - we want AppleSoft!)
+        jmp RAMCont - (Launch - RAM_LOC)  ; continue execution in RAM
+RAMCont:SelBank0
+        ldx RealBank
+        lda BANK0, x
+
+        ; Run the Monitor/AppleSoft initialization code
+        jsr Mon_SETNORM
+        jsr Mon_INIT
+        jsr Mon_SETVID
+        jsr Mon_SETKBD
+
+        ; We save away the first two bytes of our program after the
+        ; required 00 byte - AppleSoft's cold-start will erase them,
+        ; so we need to restore them again afterward
+        ldx $801
+        ldy $802
+        stx SavedFirstTwo
+        sty SavedFirstTwo+1
+
+        ; Set up program initialization code to run after AppleSoft's
+        ; cold-start has completed, the first time it prompts for input.
+        ldx #<ASOFT_ProgSetup
+        ldy #>ASOFT_ProgSetup
+        stx KSWL
+        sty KSWH
+
+        jmp ASOFT_COLDSTART
+
+ASOFT_ProgSetup:
+        ; The first time input is checked, we restore our saved
+        ; AppleSoft program, then hand control to our "input" routine.
+        lda SavedFirstTwo
+        sta $801
+        lda SavedFirstTwo+1
+        sta $802
+        lda SavedProgStart
+        sta TEXTTAB
+        lda SavedProgStart+1
+        sta TEXTTAB+1
+        lda SavedProgEnd
+        sta PRGEND
+        lda SavedProgEnd+1
+        sta PRGEND+1
+
+        ; After we've finished init, we successively feed characters
+        ; from the string "RUN"
+.macro setksw label
+        lda #<label
+        sta KSWL
+        lda #>label
+        sta KSWH
+.endmacro
+SayR:   setksw SayU
+        lda #$D2    ; R
+        rts
+SayU:   setksw SayN
+        lda #$D5    ; U
+        rts
+SayN:   setksw SayCR
+        lda #$CE    ; N
+        rts
+        ; Finally, restore normal user input and return final <CR>
+SayCR:  setksw KEYIN
+        lda #$8D    ; <CR>
+        rts
+
+        ; Fill to end of ROM
+        .res $FFFC-*
+
+        .org $FFFC
+
+RESTART:.word Launch
+BREAK:  .word ASOFTLoad
