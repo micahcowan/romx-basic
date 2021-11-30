@@ -2,7 +2,7 @@
 
         KYBD = $C000
         KYBD_STROBE = $C010
-        RAM_LOC = $3600
+        RAM_LOC = $4600
         RMXStrt = $DFD9 ; per API docs, but ex. code has DFD8?
         RMXInit = $1012
         RMXDoMenu = $103C
@@ -10,9 +10,9 @@
         ASOFT_RAMStart = $800
         RealBank = $2A6
         BANK0 = $CFE0
-        SavedFirstTwo = $36FA
-        SavedProgStart = $36FC
-        SavedProgEnd = $36FE
+        SavedFirstTwo = $45FA
+        SavedProgStart = $45FC
+        SavedProgEnd = $45FE
         KSWL = $38
         KSWH = $39
         ASOFT_COLDSTART = $f128
@@ -23,6 +23,9 @@
         Mon_SETVID = $FE93
         Mon_INIT = $FB2F
         Mon_SETNORM = $FE84
+        RAM_Offset = (Launch - RAM_LOC)
+        ChrIdx = $1D
+        ChrVal = $1E
 
 .macro inc16 addr
         inc addr
@@ -58,6 +61,8 @@
 
 Launch:
         cld
+        jsr ClearScreen
+        jmp DisplayError
 ClearScreen:
         lda #$A0        ; load space character
         ldx #$04        ;   write to $400 (text display)
@@ -71,7 +76,7 @@ ClearScreen:
             inx
             cpx #$08
         bne @np
-        ;rts
+        rts
 DisplayError:
         lda #<(LaunchErrorMsg-1)
         sta $02
@@ -91,7 +96,7 @@ AwaitKeypress:
         lda KYBD_STROBE
         ; TODO: copy jump-to-bank0-menu routine to RAM, then execute it
         jsr RamCpy
-        jmp Bk2Menu - (Launch - RAM_LOC)
+        jmp Bk2Menu - RAM_Offset
 
 LaunchErrorMsg:
 .include "launch-error-msg.inc"
@@ -113,8 +118,13 @@ Bk2Menu:
 
 ASOFTLoad:
         cld
-        ; First, copy our bootloader into RAM
-        ; jsr RamCpy - not needed, copied below
+        jsr ClearScreen
+        ; initialize our debug marker
+        ldy #$00
+        lda #$C1    ; 'A'
+        sty ChrIdx
+        sta ChrVal
+        jsr PrintMark
 
 ASOFTCopy:
         ; Then, load the stored BASIC program into RAM
@@ -132,20 +142,23 @@ CpOnePg:        lda ($2), y     ; copy one page
             inc $1              ; then move onto next page
             inc $3
         bne CpOnePg             ; ...until we've reached this page
+        jsr PrintMark
 
         ; Then switch the ROM bank to the final one (containing AppleSoft
         ;   and Monitor). (We won't check for language card ROM
         ;   - we want AppleSoft!)
-        jmp RAMCont - (Launch - RAM_LOC)  ; continue execution in RAM
+        jmp RAMCont - RAM_Offset  ; continue execution in RAM
 RAMCont:SelBank0
         ldx RealBank
         lda BANK0, x
+        jsr PrintMark - RAM_Offset
 
         ; Run the Monitor/AppleSoft initialization code
         jsr Mon_SETNORM
         jsr Mon_INIT
         jsr Mon_SETVID
         jsr Mon_SETKBD
+        jsr PrintMark - RAM_Offset
 
         ; We save away the first two bytes of our program after the
         ; required 00 byte - AppleSoft's cold-start will erase them,
@@ -154,13 +167,15 @@ RAMCont:SelBank0
         ldy $802
         stx SavedFirstTwo
         sty SavedFirstTwo+1
+        jsr PrintMark - RAM_Offset
 
         ; Set up program initialization code to run after AppleSoft's
         ; cold-start has completed, the first time it prompts for input.
-        ldx #<ASOFT_ProgSetup
-        ldy #>ASOFT_ProgSetup
+        ldx #<(ASOFT_ProgSetup - RAM_Offset)
+        ldy #>(ASOFT_ProgSetup - RAM_Offset)
         stx KSWL
         sty KSWH
+        jsr PrintMark - RAM_Offset
 
         jmp ASOFT_COLDSTART
 
@@ -188,18 +203,28 @@ ASOFT_ProgSetup:
         lda #>label
         sta KSWH
 .endmacro
-SayR:   setksw SayU
+SayR:   setksw (SayU - RAM_Offset)
         lda #$D2    ; R
         rts
-SayU:   setksw SayN
+SayU:   setksw (SayN - RAM_Offset)
         lda #$D5    ; U
         rts
-SayN:   setksw SayCR
+SayN:   setksw (SayCR - RAM_Offset)
         lda #$CE    ; N
         rts
         ; Finally, restore normal user input and return final <CR>
 SayCR:  setksw KEYIN
         lda #$8D    ; <CR>
+        rts
+
+PrintMark:
+        ; Print a letter to indicate how far into our code we've run
+        ; so we have some idea where things screwed up, if they do
+        ldy ChrIdx
+        lda ChrVal
+        sta $500,y
+        inc ChrIdx
+        inc ChrVal
         rts
 
         ; Fill to end of ROM

@@ -5,8 +5,8 @@ ROMX-BASIC.DSK: EMPTY.DSK basic-loader.bin rom-maker.bin  Makefile
 	trap 'rm -f $@; exit 1' EXIT; \
 	set -e; \
 	cp $< $@; \
-	dos33 $@ BSAVE -a 0x3600 basic-loader.bin 'ASOFT LOADER'; \
-	dos33 $@ BSAVE -a 0x4000 rom-maker.bin 'MAKE ASOFT ROM'; \
+	dos33 $@ BSAVE -a 0x4600 basic-loader.bin 'ASOFT LOADER'; \
+	dos33 $@ BSAVE -a 0x6000 rom-maker.bin 'MAKE ASOFT ROM'; \
 	trap - EXIT
 
 .SUFFIXES: .bin

@@ -3,17 +3,17 @@
 COUT = $fded
 CtrlD = $04
 CR   = $0D
-SavedProgStart = $35FC
-SavedProgEnd = $35FE
+SavedProgStart = (Start - 4)
+SavedProgEnd = (Start - 2)
 PRGEND = $AF
 TEXTTAB = $67
 GETLN1 = $fd6f
 INBUF = $200
-INBUF_Cpy = $4200
-INBUF_OrigSave = $4300
+INBUF_Cpy = (Start + $200)
+INBUF_OrigSave = (Start + $300)
 DOS_Munge = $AA59
 
-        .org $4000
+        .org $6000
 
 .macro printLine_   addr
         lda #<addr
@@ -42,7 +42,7 @@ Start:
         lda #$8D
         jsr COUT
 
-        ; BLOAD ASOFT LOADER at $3600
+        ; BLOAD ASOFT LOADER at $4600
         printLine_ (BLOAD_str+1)    ; once without Ctrl-D to echo to screen
         printLine_ BLOAD_str
 
@@ -115,7 +115,7 @@ printLine:
 :       rts
 
 BLOAD_str:
-    scrcode $04, "BLOAD ASOFT LOADER,A$3600", $0D
+    scrcode $04, "BLOAD ASOFT LOADER,A$4600", $0D
     .byte $00
 PROMPT_str:
     scrcode "ROM FILE NAME? "
@@ -124,7 +124,7 @@ BSAVE_str_pre:
     scrcode $04, "BSAVE "
     .byte $00
 BSAVE_str_post:
-    scrcode ",A$800,L$3000", $0D
+    scrcode ",A$800,L$4000", $0D
     .byte $00
 DOS_Munge_save:
     .byte $00
