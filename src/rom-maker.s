@@ -3,8 +3,9 @@
 COUT = $fded
 CtrlD = $04
 CR   = $0D
-SavedProgStart = (Start - 4)
-SavedProgEnd = (Start - 2)
+LOADER_Start = $4500
+SavedProgStart = (LOADER_Start - 4)
+SavedProgEnd = (LOADER_Start - 2)
 PRGEND = $AF
 TEXTTAB = $67
 GETLN1 = $fd6f
@@ -115,7 +116,7 @@ printLine:
 :       rts
 
 BLOAD_str:
-    scrcode $04, "BLOAD ASOFT LOADER,A$4600", $0D
+    scrcode $04, "BLOAD ASOFT LOADER,A$4500", $0D
     .byte $00
 PROMPT_str:
     scrcode "ROM FILE NAME? "
@@ -124,7 +125,7 @@ BSAVE_str_pre:
     scrcode $04, "BSAVE "
     .byte $00
 BSAVE_str_post:
-    scrcode ",A$800,L$4000", $0D
+    scrcode ",A$700,L$4000", $0D
     .byte $00
 DOS_Munge_save:
     .byte $00

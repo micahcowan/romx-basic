@@ -2,11 +2,11 @@
 
         KYBD = $C000
         KYBD_STROBE = $C010
-        RAM_LOC = $4600
-        RMXStrt = $DFD9 ; per API docs, but ex. code has DFD8?
+        RAM_LOC = $4500
+        RMXStrt = $DFD8 ; per API docs = $DFD9, but ex. code has DFD8?
         RMXInit = $1012
         RMXDoMenu = $103C
-        ASOFTStart = $D000
+        ASOFTStart = $C100
         ASOFT_RAMStart = $800
         RealBank = $2A6
         BANK0 = $CFE0

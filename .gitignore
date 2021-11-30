@@ -3,3 +3,4 @@
 *.o
 ROMX-BASIC.DSK
 src/launch-error-msg.inc
+src/TEST.BAS
