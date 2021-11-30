@@ -3,9 +3,10 @@
 COUT = $fded
 CtrlD = $04
 CR   = $0D
-LOADER_Start = $4500
-SavedProgStart = (LOADER_Start - 4)
-SavedProgEnd = (LOADER_Start - 2)
+LOADER_ROM_Start = $FD00
+LOADER_RAM_Start = (LOADER_ROM_Start - ($C100 - $800))
+SavedProgStart = (LOADER_RAM_Start - 4)
+SavedProgEnd = (LOADER_RAM_Start - 2)
 PRGEND = $AF
 TEXTTAB = $67
 GETLN1 = $fd6f
