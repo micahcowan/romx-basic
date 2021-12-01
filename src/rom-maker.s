@@ -11,8 +11,6 @@ PRGEND = $AF
 TEXTTAB = $67
 GETLN1 = $fd6f
 INBUF = $200
-INBUF_Cpy = (Start + $200)
-INBUF_OrigSave = (Start + $300)
 DOS_Munge = $AA59
 
         .org $6000
@@ -26,20 +24,6 @@ DOS_Munge = $AA59
 .endmacro
 
 Start:
-    ; save x and y, and DOS's stack marker that it will later try to
-    ; fuck up.
-        txa
-        pha
-        tya
-        pha
-        lda DOS_Munge
-        sta DOS_Munge_save
-
-        ; save away input buffer (because DOS is still executing it)
-        ldy #>INBUF
-        lda #>INBUF_OrigSave
-        jsr copyInBuf
-
         ; output an initial CR
         lda #$8D
         jsr COUT
@@ -65,7 +49,7 @@ Start:
         sta INBUF, x        ; CR-terminated -> NUL-terminated
 
         ; Copy input buffer, because Ctrl-D DOS processing will
-        ; overwrite when we BSAVE next
+        ; overwrite when we send BSAVE next
         ldy #>INBUF
         lda #>INBUF_Cpy
         jsr copyInBuf
@@ -78,21 +62,12 @@ Start:
         printLine_ INBUF_Cpy
         printLine_ BSAVE_str_post
 
-        ; Copy saved input buffer back, so DOS can continue doing
-        ; whatever it had been doing
-        ldy #>INBUF_OrigSave
-        lda #>INBUF
-        jsr copyInBuf
+        ; Exit by jumping directly to DOS warm start ($3D0).
+        ; set the stack to something high, first.
+        ldx #$fb
+        txs
 
-        ; restore x and y
-        pla
-        tay
-        pla
-        tax
-        lda DOS_Munge_save
-        sta DOS_Munge
-
-        rts
+        jmp $3D0
 
 copyInBuf:
         sty $9
@@ -117,16 +92,25 @@ printLine:
 :       rts
 
 BLOAD_str:
-    scrcode $04, "BLOAD ASOFT.LOADER,A$4500", $0D
-    .byte $00
+        scrcode $04, "BLOAD ASOFT.LOADER,A$4500", $0D
+        .byte $00
 PROMPT_str:
-    scrcode "ROM FILE NAME? "
-    .byte $00
+        scrcode "ROM FILE NAME? "
+        .byte $00
 BSAVE_str_pre:
-    scrcode $04, "BSAVE "
-    .byte $00
+        scrcode $04, "BSAVE "
+        .byte $00
 BSAVE_str_post:
-    scrcode ",A$700,L$4000", $0D
-    .byte $00
+        scrcode ",A$700,L$4000", $0D
+        .byte $00
 DOS_Munge_save:
-    .byte $00
+        .byte $00
+
+.out ""
+.out .sprintf ("MAKE ASOFT ROM ends at $%X", *)
+        .org (.hibyte(*) + 1) * $100
+
+INBUF_Cpy:  ; where ROM filename gets saved after prompt
+
+.out .sprintf ("INBUF_Cpy        is at $%X", *)
+.out ""
