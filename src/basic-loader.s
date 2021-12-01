@@ -11,7 +11,9 @@
         ASOFTStart = $C100
         ASOFT_RAMStart = $800
         RealBank = $2A6
-        BANK0 = $F830
+        BANK0 = $F800           ; select which bank is "main" ROM
+        SEL_MBANK = $F851       ; activate main ROM
+        INTCXROMOFF = $C006     ; enable slot devices, disable main ROM Cxxx
         SavedFirstTwo = RAM_LOC - 6
         SavedProgStart = RAM_LOC - 4
         SavedProgEnd = RAM_LOC - 2
@@ -31,15 +33,7 @@
         ChrVal = $1E
         ALOAD_loc = $7EE
         BRK_loc = ALOAD_loc + 6
-        ScrLoc = PrOneChar - RAM_Offset + 1   ; where PrOneChar writes to screen
         ROM_CompareLoc = $FE84
-
-.macro SetWord addr, val
-        lda #<val
-        sta addr
-        lda #>val
-        sta addr+1
-.endmacro
 
 .macro inc16 addr
         inc addr
@@ -66,43 +60,9 @@
 
 .macro SelBank0
         bit $C0E0    ;ZipSlow
-;       bit $CACA
-;       bit $CACA
-;       bit $CAFE
         bit $FACA
         bit $FACA
         bit $FAFE
-.endmacro
-
-.macro PrintMark_ char
-.ifdef DEBUG
-        lda #(char | $80)
-        jsr PrintMark
-.endif
-.endmacro
-.macro PrintMark_RAM_ char
-.ifdef DEBUG
-        lda #(char | $80)
-        jsr PrintMark - RAM_Offset
-.endif
-.endmacro
-
-.macro PrintString_ dest, strAddr
-        ldy #$FF
-:       iny
-        lda strAddr, y
-        beq :+
-        sta dest, y
-        bne :-
-:
-.endmacro
-
-.macro CheckALOAD
-    .repeat .strlen("ALOAD"), i
-        lda ALOAD_loc+i
-        cmp #(.strat("ALOAD", i) | $80)
-        bne No_ALOAD
-    .endrepeat
 .endmacro
 
 
@@ -167,27 +127,8 @@ Bk2Menu:
 
 ASOFTLoad:
         cld
-
-.ifdef DEBUG
-        CheckALOAD
-        ; if we get here, we have the ALOAD string.
-        ; print flashing BRK and loop infinitely.
-        PrintString_ BRK_loc, BRK_str
-        sec
-@here:  bcs @here
-.endif
-
-No_ALOAD:
-        jsr ClearScreen
-        ; initialize our debug marker
-        ldy #$00
-        lda #$C1    ; 'A'
-        sty ChrIdx
-        sta ChrVal
-        PrintMark_ 'A'
-
 ASOFTCopy:
-        ; Then, load the stored BASIC program into RAM
+        ; load the stored BASIC program into RAM
         ldx #>ASOFTStart
         lda #>ASOFT_RAMStart
         ldy #0
@@ -202,24 +143,6 @@ CpOnePg:        lda ($2), y     ; copy one page
             inc $1              ; then move onto next page
             inc $3
         bne CpOnePg             ; ...until we've reached this page
-        PrintMark_ 'B'
-
-        ; Mark ALOAD on-screen so we know it's safe to use our RAM-installed
-        ; BRK handler
-.ifdef DEBUG
-        PrintString_ ALOAD_loc, ALOAD_str
-.endif
-
-        PrintString_ $700, ALOAD_str
-        PrintString_ $4A8, ROM0_str
-        PrintString_ $628, MON_str
-
-        SetWord ScrLoc, $780
-        SetWord $6, ROM_CompareLoc
-        jsr PrintEightBytes - RAM_Offset
-        SetWord ScrLoc, $428
-        SetWord $6, (ROM_CompareLoc+8)
-        jsr PrintEightBytes - RAM_Offset
 
         ; Then switch the ROM bank to the final one (containing AppleSoft
         ;   and Monitor). (We won't check for language card ROM
@@ -227,51 +150,24 @@ CpOnePg:        lda ($2), y     ; copy one page
         jmp RAMCont - RAM_Offset  ; continue execution in RAM
 RAMCont:SelBank0
 
-        ; Print BANK0 bytes
-        SetWord ScrLoc, $528
-        SetWord $6, ROM_CompareLoc
-        jsr PrintEightBytes - RAM_Offset
-        SetWord ScrLoc, $5A8
-        SetWord $6, (ROM_CompareLoc+8)
-        jsr PrintEightBytes - RAM_Offset
-
         ldx RealBank
-        ; print the x value
-        lda #$D8    ; 'X'
-        sta $600
-        lda #$BA    ; ':'
-        sta $601
-        SetWord ScrLoc, $604
-        txa
-        jsr PrintHex - RAM_Offset
-        ;
         lda BANK0, x
-
-        ; Print BANK2 bytes
-        SetWord ScrLoc, $6A8
-        SetWord $6, ROM_CompareLoc
-        jsr PrintEightBytes - RAM_Offset
-        SetWord ScrLoc, $728
-        SetWord $6, (ROM_CompareLoc+8)
-        jsr PrintEightBytes - RAM_Offset
-
-        PrintMark_RAM_ 'C'
+        bit SEL_MBANK
 
         ; Run the Monitor/AppleSoft initialization code
         jsr Mon_SETNORM
         jsr Mon_INIT
         jsr Mon_SETVID
         jsr Mon_SETKBD
-        PrintMark_RAM_ 'D'
 
         ; We save away the first two bytes of our program after the
-        ; required 00 byte - AppleSoft's cold-start will erase them,
-        ; so we need to restore them again afterward
+        ; required 00 byte - AppleSoft's cold-start will erase them
+        ; to indicate "end of program listing", so we need to restore
+        ; them again afterward
         ldx $801
         ldy $802
         stx SavedFirstTwo
         sty SavedFirstTwo+1
-        PrintMark_RAM_ 'E'
 
         ; Set up program initialization code to run after AppleSoft's
         ; cold-start has completed, the first time it prompts for input.
@@ -279,8 +175,8 @@ RAMCont:SelBank0
         ldy #>(ASOFT_ProgSetup - RAM_Offset)
         stx KSWL
         sty KSWH
-        PrintMark_RAM_ 'F'
 
+        sta INTCXROMOFF
         jmp ASOFT_COLDSTART
 
 ASOFT_ProgSetup:
@@ -296,7 +192,7 @@ ASOFT_ProgSetup:
         sta TEXTTAB+1
         lda SavedProgEnd
         sta PRGEND
-        sta VARTAB
+        sta VARTAB              ; The "program end" is also "start of vars"
         lda SavedProgEnd+1
         sta PRGEND+1
         sta VARTAB+1
@@ -322,63 +218,6 @@ SayN:   setksw (SayCR - RAM_Offset)
 SayCR:  setksw KEYIN
         lda #$8D    ; <CR>
         rts
-
-.ifdef DEBUG
-PrintMark:
-        ; Print a letter to indicate how far into our code we've run
-        ; so we have some idea where things screwed up, if they do
-        ldy ChrIdx
-        lda ChrVal
-        sta $500,y
-        inc ChrIdx
-        inc ChrVal
-        rts
-.endif
-
-        ; DO NOT USE before copying to RAM
-PrintHex:
-        pha
-        lda #$A0
-        jsr PrOneChar - RAM_Offset
-        pla
-        pha
-        lsr
-        lsr
-        lsr
-        lsr
-        jsr PrintHexDig - RAM_Offset
-        pla
-        and #$0F
-        jmp PrintHexDig - RAM_Offset
-PrintHexDig:
-        ora #$B0
-        cmp #$BA
-        bcc PrOneChar   ; 0-9 if clear, A-F otherwise
-        adc #($C1 - $BA - 1)
-PrOneChar:
-        sta $0A0A       ; Not actually $0A0A - gets overwritten as ScrLoc
-        inc ScrLoc
-        rts
-PrintEightBytes:        ; src in $06
-        ldy #$00
-:       lda ($06), y
-        jsr PrintHex - RAM_Offset
-        iny
-        cpy #$08
-        bne :-
-        rts
-
-ALOAD_str:
-        scrcode "ALOAD"
-        .byte $00
-BRK_str:
-        .byte "BRK", $00
-MON_str:
-        scrcode "ASOFT+MON"
-        .byte $00
-ROM0_str:
-        scrcode "MON0"
-        .byte $00
 
         ; Fill to end of ROM
         .res $FFFC-*
