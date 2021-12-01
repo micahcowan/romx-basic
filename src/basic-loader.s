@@ -1,10 +1,10 @@
 .macpack apple2
 
-        DEBUG = 1
+        ROM_START = $FE00
 
         KYBD = $C000
         KYBD_STROBE = $C010
-        RAM_LOC = (Launch - ($C100 - $800))
+        RAM_LOC = (ROM_START - ($C100 - $800))
         RMXStrt = $DFD9 ; per API docs = $DFD9, but ex. code has DFD8?
         RMXInit = $1012
         RMXDoMenu = $103C
@@ -28,12 +28,15 @@
         Mon_SETVID = $FE93
         Mon_INIT = $FB2F
         Mon_SETNORM = $FE84
-        RAM_Offset = (Launch - RAM_LOC)
+        RAM_Offset = (Start - RAM_LOC)
         ChrIdx = $1D
         ChrVal = $1E
         ALOAD_loc = $7EE
         BRK_loc = ALOAD_loc + 6
         ROM_CompareLoc = $FE84
+
+.out ""
+.out .sprintf("LOADER starts at $%X (RAM)", RAM_LOC)
 
 .macro inc16 addr
         inc addr
@@ -66,8 +69,17 @@
 .endmacro
 
 
-        .org $FC00
+        .org ROM_START
+
+Start:
+        ;; This code only runs if this file is BRUN directly. Just rts
+        ;; immediately.
+        rts
+
 Launch:
+        ;; This code is only run when this ROM is launched as the "main"
+        ;; ROM! We print a message explaining that we only support use
+        ;; as an "application" ROM, chained to a system ROM via &Sx etc.
         cld
 
         jsr ClearScreen
@@ -112,7 +124,7 @@ LaunchErrorMsg:
 
 RamCpy:
         ldy #0
-@lp:    lda Launch, y
+@lp:    lda Start, y
         sta RAM_LOC, y
         iny
         bne @lp
@@ -122,6 +134,10 @@ Bk2Menu:
         jsr RMXStrt
         jsr RMXInit
         jmp RMXDoMenu
+
+.if (* - Start) > $100
+    .error .sprintf("LAUNCH is too large: max $100 but we have $%x", *-Start)
+.endif
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -218,6 +234,9 @@ SayN:   setksw (SayCR - RAM_Offset)
 SayCR:  setksw KEYIN
         lda #$8D    ; <CR>
         rts
+
+.out .sprintf("       ends at   $%X (ROM) with $%x space remaining", *, $FFFC-*)
+.out ""
 
         ; Fill to end of ROM
         .res $FFFC-*
