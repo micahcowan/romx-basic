@@ -15,7 +15,7 @@ ROMX-BASIC.DSK: EMPTY.DSK basic-loader.bin rom-maker.bin TEST.BAS Makefile
 	ld65 -o $@ -t none $<
 
 .s.o:
-	ca65 -o $@ --listing $(subst .s,.list,$<) $<
+	ca65 -o $@ --list-bytes 0 --listing $(subst .s,.list,$<) $<
 
 TEST.BAS: test.bas
 	tokenize_asoft < $< >| $@

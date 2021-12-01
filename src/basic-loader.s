@@ -5,13 +5,13 @@
         KYBD = $C000
         KYBD_STROBE = $C010
         RAM_LOC = (Launch - ($C100 - $800))
-        RMXStrt = $DFD8 ; per API docs = $DFD9, but ex. code has DFD8?
+        RMXStrt = $DFD9 ; per API docs = $DFD9, but ex. code has DFD8?
         RMXInit = $1012
         RMXDoMenu = $103C
         ASOFTStart = $C100
         ASOFT_RAMStart = $800
         RealBank = $2A6
-        BANK0 = $CFE0
+        BANK0 = $F830
         SavedFirstTwo = RAM_LOC - 6
         SavedProgStart = RAM_LOC - 4
         SavedProgEnd = RAM_LOC - 2
@@ -21,6 +21,7 @@
         KEYIN = $fd1b
         PRGEND = $AF
         TEXTTAB = $67
+        VARTAB = $69
         Mon_SETKBD = $FE89
         Mon_SETVID = $FE93
         Mon_INIT = $FB2F
@@ -65,9 +66,12 @@
 
 .macro SelBank0
         bit $C0E0    ;ZipSlow
-        bit $CACA
-        bit $CACA
-        bit $CAFE
+;       bit $CACA
+;       bit $CACA
+;       bit $CAFE
+        bit $FACA
+        bit $FACA
+        bit $FAFE
 .endmacro
 
 .macro PrintMark_ char
@@ -84,8 +88,9 @@
 .endmacro
 
 .macro PrintString_ dest, strAddr
-        ldy #$00
-:       lda strAddr, y
+        ldy #$FF
+:       iny
+        lda strAddr, y
         beq :+
         sta dest, y
         bne :-
@@ -291,8 +296,10 @@ ASOFT_ProgSetup:
         sta TEXTTAB+1
         lda SavedProgEnd
         sta PRGEND
+        sta VARTAB
         lda SavedProgEnd+1
         sta PRGEND+1
+        sta VARTAB+1
 
         ; After we've finished init, we successively feed characters
         ; from the string "RUN"
@@ -344,10 +351,10 @@ PrintHex:
         and #$0F
         jmp PrintHexDig - RAM_Offset
 PrintHexDig:
-        ora #$70
-        cmp #$7A
+        ora #$B0
+        cmp #$BA
         bcc PrOneChar   ; 0-9 if clear, A-F otherwise
-        adc $81 - $7A - 1
+        adc #($C1 - $BA - 1)
 PrOneChar:
         sta $0A0A       ; Not actually $0A0A - gets overwritten as ScrLoc
         inc ScrLoc

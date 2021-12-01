@@ -3,7 +3,7 @@
 COUT = $fded
 CtrlD = $04
 CR   = $0D
-LOADER_ROM_Start = $FD00
+LOADER_ROM_Start = $FC00
 LOADER_RAM_Start = (LOADER_ROM_Start - ($C100 - $800))
 SavedProgStart = (LOADER_RAM_Start - 4)
 SavedProgEnd = (LOADER_RAM_Start - 2)
@@ -117,7 +117,7 @@ printLine:
 :       rts
 
 BLOAD_str:
-    scrcode $04, "BLOAD ASOFT LOADER,A$4500", $0D
+    scrcode $04, "BLOAD ASOFT LOADER,A$4300", $0D
     .byte $00
 PROMPT_str:
     scrcode "ROM FILE NAME? "
