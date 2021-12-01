@@ -43,8 +43,8 @@ User Manual for how to do this)
 5. Edit the description to add `&S1` at the appropriate column,
 so that the ROMXc/e knows to switch to the "real" ROM after
 it's finished loading your BASIC program from this one.
-(Again, see the ROMXc/e manual, under "Adding an Application
-Image", for details.)
+(Again, see the ROMXc/e User Manual, under *Adding an
+Application Image*, for details.)
 
 ---
 
