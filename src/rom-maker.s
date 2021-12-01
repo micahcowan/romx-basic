@@ -5,13 +5,14 @@ CtrlD = $04
 CR   = $0D
 LOADER_ROM_Start = $FE00
 LOADER_RAM_Start = (LOADER_ROM_Start - ($C100 - $800))
+MAX_ProgEnd = (LOADER_RAM_Start - 6)
 SavedProgStart = (LOADER_RAM_Start - 4)
 SavedProgEnd = (LOADER_RAM_Start - 2)
 PRGEND = $AF
 TEXTTAB = $67
 GETLN1 = $fd6f
 INBUF = $200
-DOS_Munge = $AA59
+PRBYTE = $FDDA
 
         .org $6000
 
@@ -32,6 +33,29 @@ Start:
         printLine_ (BLOAD_str+1)    ; once without Ctrl-D to echo to screen
         printLine_ BLOAD_str
 
+        ; Check if the BASIC program is too large
+        ;   Subtract low bytes first to get carry/borrow
+        sec
+        lda #<MAX_ProgEnd
+        sbc PRGEND
+        ;   then subtract the high bytes to get the real answer
+        lda #>MAX_ProgEnd
+        sbc PRGEND+1
+        bcs HaveSpace
+
+        ; We don't have enough space for the BASIC program!
+        printLine_ InsufficientSpace_str
+        ; print prog end
+        lda PRGEND+1
+        jsr PRBYTE
+        lda PRGEND
+        jsr PRBYTE
+        lda #$8D
+        jsr COUT
+
+        jmp Exit
+
+HaveSpace:
         ; Save program start/end info
         lda TEXTTAB
         ldy TEXTTAB+1
@@ -64,6 +88,7 @@ Start:
 
         ; Exit by jumping directly to DOS warm start ($3D0).
         ; set the stack to something high, first.
+Exit:
         ldx #$fb
         txs
 
@@ -92,7 +117,8 @@ printLine:
 :       rts
 
 BLOAD_str:
-        scrcode $04, "BLOAD ASOFT.LOADER,A$4500", $0D
+        scrcode $04, "BLOAD ASOFT.LOADER,A"
+        scrcode .sprintf("$%X", LOADER_RAM_Start), $0D
         .byte $00
 PROMPT_str:
         scrcode "ROM FILE NAME? "
@@ -103,7 +129,12 @@ BSAVE_str_pre:
 BSAVE_str_post:
         scrcode ",A$700,L$4000", $0D
         .byte $00
-DOS_Munge_save:
+InsufficientSpace_str:
+        scrcode "NOT ENOUGH SPACE IN ROM IMAGE", $0D
+        scrcode "FOR THE CURRENT APPLESOFT PROGRAM!", $0D
+        scrcode "YOUR PROGRAM MUST END AT "
+        scrcode .sprintf("$%X", MAX_ProgEnd), $0D
+        scrcode "BUT IT ENDS AT $"
         .byte $00
 
 .out ""
