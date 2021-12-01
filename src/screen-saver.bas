@@ -1,0 +1,18 @@
+  10 D = 3 - 1
+  20  DIM A$(D)
+  25 HZ = 40:VT = 24
+  30 A$(0) = "SAVE":A$(1) = "DEM":A$(2) = "SCREENZ"
+ 100  HOME 
+ 120  FOR P = 1 TO 200: NEXT 
+ 150  FOR I = 0 TO D
+ 160 A$ = A$(I)
+ 170  GOSUB 500
+ 220  NEXT I
+ 240  FOR P = 1 TO 2000: NEXT 
+ 250  GOTO 100
+ 500 X =  RND (1) * (HZ -  LEN (A$)) + 1
+ 505  HTAB X
+ 510  VTAB   RND (1) * VT + 1
+ 520  PRINT A$;
+ 550  FOR P = 1 TO 1500: NEXT 
+ 600  RETURN 
