@@ -56,6 +56,8 @@ The `MAKE ASOFT ROM` tool finds whatever BASIC program is already loaded into me
 
 At this point, the real ROM has been loaded but the computer is still being controlled by the bootloader code in RAM. It can't just jump right into the startup code from the real ROM, though, because that would obliterate the BASIC program we just reloaded! But, AppleSoft does a lot of things when it starts up, and we didn't want to include all that code in our bootloader. So, after runnning a few setup routines from the Monitor, we hijack the keyboard input routine, replacing it with our own, and *then* hand control over to AppleSoft's "cold start" routine. When AppleSoft finishes setting things up the way it wants them, it spits out the `]` prompt and waits for keyboard input - that's when our hijack code pounces! It restores a couple of things that AppleSoft's startup code blew away so the program is back in place once again, and then simulates typing `RUN` at the prompt, restoring normal keyboard input just as it sends the final return-key stroke.
 
+The AppleSoft Autorun bootloader code was based on the ROMX/c/e project's "Fastload DOS" image code as a template. Source code for the "Fastload DOS image" is found in the PDF guide within the *ROMify Image Tutorial.zip* package available at https://theromexchange.com/documentation/romxce. That code is for creating 12k ROM images for the original ROMX, however, and not the ROMXc/e.
+
 ## My ROM doesn’t boot! It just gives some dumb message about being a BASIC image that can’t be launched
 
 This message indicates that you forgot to add an `&S1` in the description line for your ROM image, after you uploaded it to the ROMXc/e! Or, if you did add it, then it didn't start in the right column. The exact location of this special marker is important - read your ROMXc/e manual for details!
@@ -96,10 +98,23 @@ That's the right way to do it in raw AppleSoft programs. It's the *wrong* way to
 
 The same thing applies to using the serial port to print things, or to communicate via modem, except the string may be something like `PR#1` or `PR#2` instead of `PR#3`.
 
-## 12k ROM?
-## 32k ROM?
-## ROM with DOS?
-## What about Integer Basic?
+## I have a ROMX, not a ROMXc or e. Can I use AppleSoft Autorun?
+
+Not at this present time. However, I do also have a ROMX, so when I have time and the inclination, I may adapt the tool to create a version that works with the ROMX. Naturally, the maximum BASIC program size will be smaller, as the ROMX only accepts 12k images.
+
+## My BASIC program is too large! The ROMXc/e supports 32k image files, why doesn't your tool create those?
+
+Because it's a little more work, and wasn't necessary for scratching the particular itch I had - I didn't have any >16k BASIC programs I'm dying to boot directly into on my Apple II. I may add this capability at some point in the future. The easiest way to ensure that happens, would be to get me fired up about your awesome 30k BASIC program! ;)
+
+Realistically, though, I think most BASIC programs that are that large, also expect to have DOS available, in which case the AppleSoft Autorun ROM image maker tool may be a poor fit.
+
+## Why can't you just include DOS in the generated ROM, too?
+
+Again, it's more work than I was motivated to do. I may do it in future, but probably not. It would definitely need to be a 32k ROM image at that point.
+
+## Your tool is neat! ...But my favorite BASIC program is in Integer Basic. Can you make an Integer Basic Autorun tool?
+
+Not at this time. There isn't enough neat software in Integer BASIC to motivate this - though it would be lovely to have Bob Bishop's *Applevision* load at boot!
 
 ---
 
