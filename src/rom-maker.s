@@ -29,10 +29,6 @@ Start:
         lda #$8D
         jsr COUT
 
-        ; BLOAD ASOFT LOADER at $4600
-        printLine_ (BLOAD_str+1)    ; once without Ctrl-D to echo to screen
-        printLine_ BLOAD_str
-
         ; Check if the BASIC program is too large
         ;   Subtract low bytes first to get carry/borrow
         sec
@@ -56,6 +52,10 @@ Start:
         jmp Exit
 
 HaveSpace:
+        ; BLOAD ASOFT LOADER at $4600
+        printLine_ (BLOAD_str+1)    ; once without Ctrl-D to echo to screen
+        printLine_ BLOAD_str
+
         ; Save program start/end info
         lda TEXTTAB
         ldy TEXTTAB+1
