@@ -7,3 +7,4 @@
 - Booting ROM
   - Test that "booting" the ROM (as a "system ROM") gives the reject page, then successfully reboots to firmware menu on keypress
   - Test that boot succeeds in running the stored BASIC program
+  - Test that slot ROMs are active (can use "slotted" devices, such as mouse or serial).
