@@ -1,5 +1,7 @@
 # AppleSoft Autorun for the ROMXc/e
 
+[![AppleSoft Autorun ROM Maker shwocase video](https://img.youtube.com/vi/nOOb8MTewpE/0.jpg)](https://www.youtube.com/watch?v=nOOb8MTewpE)
+
 This project provides a tool for the
 [ROMXc/e](https://www.theromexchange.com/), to create
 ROM images that will boot directly into a running
